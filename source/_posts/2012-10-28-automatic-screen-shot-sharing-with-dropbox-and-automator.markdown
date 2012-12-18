@@ -14,7 +14,7 @@ First, fire up Automator, create a new `folder action` and associate it to the D
 
 ![Screenshot of a folder action for desktop](http://www.matteoagosti.com/images/posts/Screen Shot 2012-10-28 at 10.42.55 PM.png)
 
-Add the `Filter Finder Items` action to select only images whose file name starts with `Screen Shot`
+Add the `Filter Finder Items` action to select only images whose file name starts with `Screen Shot` (if your installation is not in English you may have to replace `Screen Shot` with the translated version)
 
 ![Screenshot of a folder action for desktop](http://www.matteoagosti.com/images/posts/Screen Shot 2012-10-28 at 10.47.00 PM.png)
 
@@ -32,8 +32,8 @@ echo -ne ${encodedUrl} | pbcopy
 afplay /System/Library/Sounds/Glass.aiff 
 ```
 
-Replace `XXXXXX` with your Dropbox user id. To find it, just copy the URL of one of your public files.
+Replace `XXXXXX` with your Dropbox user id. To find it, just copy the URL of one of your public files (right-click/control-click a file in your Dropbox public folder, then choose from the menu `Dropbox` > `Copy Public Link` and paste it somewhere)
 
 ![Screenshot of a folder action for desktop](http://www.matteoagosti.com/images/posts/Screen Shot 2012-10-28 at 11.04.54 PM.png)
 
-Now save the folder action and have fun!
+Now save the folder action, close automator and have fun!

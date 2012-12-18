@@ -3,7 +3,7 @@ layout: post
 title: "How to properly deal with Javascript asynchronous code"
 date: 2012-09-03 12:15
 comments: true
-categories: [Development, Javascript]
+categories: [Development, JavaScript]
 ---
 
 If you are a Javascript developer, you have to deal with asynchronous code. If you are a Javascript developer working with Node.js, asynchronous code is your all in a day's work. Let's see how to properly deal with asynchronous code, avoiding one of the most common mistake.
