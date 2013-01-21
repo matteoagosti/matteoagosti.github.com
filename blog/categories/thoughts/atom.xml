@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Thoughts | Matteo Agosti]]></title>
+  <link href="http://www.matteoagosti.com/blog/categories/thoughts/atom.xml" rel="self"/>
+  <link href="http://www.matteoagosti.com/"/>
+  <updated>2013-01-22T00:26:17+01:00</updated>
+  <id>http://www.matteoagosti.com/</id>
+  <author>
+    <name><![CDATA[Matteo Agosti]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[10 reasons why blog platforms won't foster your writing]]></title>
+    <link href="http://www.matteoagosti.com/blog/2012/07/03/10-reasons-why-blog-platforms-won-t-foster-your-writing/"/>
+    <updated>2012-07-03T23:12:00+02:00</updated>
+    <id>http://www.matteoagosti.com/blog/2012/07/03/10-reasons-why-blog-platforms-won-t-foster-your-writing</id>
+    <content type="html"><![CDATA[<p>Have you always wanted to be a blogger, but got stuck? Here's why.</p>
+
+<!--more-->
+
+
+<ol>
+<li><p>Finding the right platform for blogging will waste most of your time.</p></li>
+<li><p>Once you'll find the right platform a huge amount of time will be spent in trying to figure out how it works.</p></li>
+<li><p>You'll soon discover that categories / tags will be a nightmare to setup as will fit only 90% of posts you write.</p></li>
+<li><p>The default theme will fit your needs only during the initial tests and you'll soon have to face the coding nightmare.</p></li>
+<li><p>You won't be able to provide a great reading experience on multiple devices unless you buy an expensive theme and you spend a huge amount of time customizing it.</p></li>
+<li><p>Writing will be set back by cluttered rich text editors packed with tons of useless features.</p></li>
+<li><p>The listing of your posts will be a huge cause of stress if you can't keep up with a good writing pace.</p></li>
+<li><p>If you like to write using multiple languages you'll be discouraged as this will make your pages a real mess.</p></li>
+<li><p>It won't be easy to make others aware of your writings if to promote them you have first to promote your whole blog.</p></li>
+<li><p>You'll soon realize that it is time to find a better platform, and the endless loop will just start again.</p></li>
+</ol>
+
+
+<p>If you want to spend your time writing, rather than wasting it in finding which is the best platform for doing it, you should check out <a href="http://feathe.rs/manifesto" title="Feathers, Blogless writing">Feathers manifesto</a> and stay tuned for updates!</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Hints for Improving the Learning Process]]></title>
+    <link href="http://www.matteoagosti.com/blog/2012/05/19/hints-for-improving-the-learning-process/"/>
+    <updated>2012-05-19T22:30:00+02:00</updated>
+    <id>http://www.matteoagosti.com/blog/2012/05/19/hints-for-improving-the-learning-process</id>
+    <content type="html"><![CDATA[<p>As a software engineer I'm always challenged with new languages and frameworks, potentially of great use in my daily work. During the last 5 years, in fact, I spent several time (almost everyday) in learning new things. With this post I’d like to share my considerations on how the learning process could be improved. I am far from being an expert on learning methodologies and related-stuff, so consider this post more like a list of tips that works… at least for me :)</p>
+
+<!--more-->
+
+
+<h2>Avoid information overload and stay focused</h2>
+
+<p><blockquote><p>Distringit librorum multitudo<br/>(the abundance of books is distraction)</p><footer><strong>Seneca</strong> <cite>Epistulae Morales Ad Lucilium</cite></footer></blockquote></p>
+
+<p>I wonder what Seneca could have said of our times if almost 2000 years ago there were already too many books. Joking apart, especially when learning new things, the first issue you have to face is trying to narrow down the number of information sources available. It isn’t easy with so many free channels where good information can be found: blogs, tweets linking to other blogs, podcasts, iTunes U and many, many others.</p>
+
+<p>Despite being tempted to read as much as I can, the first thing I do when approaching a new learning subject is find out the community of people behind it and spot which are the individuals with good reputation. By following only the latter I avoid all the redundancy of contents caused by re-posts.</p>
+
+<p>I then list all top resources on the subject discussed within the community - mostly articles and books - and analyze them roughly. I almost end up with a long list of readings that I narrow down to a maximum of 5 items. This doesn’t mean that I’m not going to read everything; it just means that in the first learning phase I’ll force myself to stay within this boundary. Additionally, I try to focus on one reading at a time (from start to end) avoiding multitasking, because it can hurt learning effectiveness. When you start digging deeply into a resource, in fact, the amount of time needed to switch to another one increases dramatically, thus making you learn more slowly and become less efficient.</p>
+
+<h2>Understand your learning styles and combine them</h2>
+
+<p>Another hint for a good learning strategy is understating which are your best ways of learning. This is an absolutely personal factor as everyone has his/her own learning habits and styles. I’d just recommend trying to search for resources that suite your learning styles. As an example, I am that kind of developer that needs to get his hands dirty with the code and best understand things by breaking them down to discover how they are made; I’d also add that is even better if the thing doesn’t work out of the box because solving problems is, at least for me, the best way to make what I’ve learned sticky into my head. After reading books and articles I typically end up finding good projects on GitHub and spend time understanding how they work.</p>
+
+<p><blockquote><p>The more regions of the brain that store data about a subject, the more interconnection there is.</p><footer><strong>Judy Willis,</strong> <cite><a href='http://www.hopefoundation.org/blog/2012/02/27/research-based-strategies-to-ignite-student-learning/'>www.hopefoundation.org/blog/02/&hellip;</a></cite></footer></blockquote></p>
+
+<p>Recently I discovered that learning in more than one way could also help in permanently pin things into my mind. Instead of just reading an article, listening to a podcast or watching a screencast - which clearly involves other areas of my brain - helps me in recalling what I’ve learned. I’d suggest focusing on learning in more than just a single way.</p>
+
+<h2>Set learning goals and practice as much as possible</h2>
+
+<p><blockquote><p>There is no achievement without goals</p><footer><strong>Robert J. McKaine</strong> <cite></cite></footer></blockquote></p>
+
+<p>Always have learning goals. I should have made this sentence sticky as many of the failures I faced when learning something were due to the lack of clear learning goals. You can see goals as the milestones of a project: without them you clearly don’t have an end, you can’t track your progresses, you can’t motivate yourself for having reached a checkpoint. Actually, without goals you do not have a valuable reason to progress within your learning.</p>
+
+<p>My goals when learning a new language or framework are always related to solving a problem I’ve already went through with other systems. In this way I can focus more on applying what I’m learning rather than understanding the problem itself. Not surprisingly, many times I come out with a better solution thanks to the facilities of the new language. In addition, approaching something you already know, but from a different point of view, forces you to make comparisons and this helps cementing what you have learned.</p>
+
+<p>Always create opportunities to apply what you’ve learned, whether on a sample project or on a real one. The most important thing is that you should do it as soon as possible, not to let going away what you have just learned. Practice is extremely important and you should never stop it. Personally I always try to introduce something new inside my work routine and as soon as there is an opportunity for a new project I jump straight into it by bringing whatever I learned (the fact that this is then accepted is another story :P).</p>
+
+<h2>Teach and get taught</h2>
+
+<p><blockquote><p>If you can’t explain it simply, you don’t understand it well enough</p><footer><strong>Albert Einstein</strong> <cite></cite></footer></blockquote></p>
+
+<p>It is well known that one of the best way to learn something is teaching it to someone else. The reason why this is true lies in the fact that to convey notions and make them comprehensible you first have to clearly understand and organize them in your head. One great way to achieve that, even if you don’t have students, is to talk as much as you can with colleagues or friends interested into what you are learning. You’ll be surprised to see how hard is to explain concepts if they are not totally clear in your head. In addition, you could do a sort of knowledge transfer where you get taught back on things that could potentially interest you.</p>
+
+<p>Finally, don’t be afraid of engaging in dialog or ask questions within communities. It’s not easy, but always useful to get others point of view. It can dramatically help in taking the right decisions or solving issues. As an example, during the last months I’ve discovered completely different viewpoints on building server side apps using pure JavaScript; that has been a mind changer for me, always focused on using JS just for front-end development.</p>
+
+<h2>Never stop learning and feed your enthusiasm</h2>
+
+<p><blockquote><p>If you never stop learning, you will never stop seeing the possibilities</p><footer><strong>Bill Gates</strong> <cite></cite></footer></blockquote></p>
+
+<p>The last but not least hint is learning over time. In my opinion (and luckily I’m not the only one) the best way to learn is to keep learning. Never think that you reached an end, because around the corner there will always be something new to discover and study. Never think that you reached a perfect state, because there will always be a better way for doing what you’ve already done. The only way to progress and improve is throughout learning. In addition, it has been scientifically proven that the learning process positively affects the brain improving the old gray matter :P</p>
+
+<p>Always be enthusiastic of what you learn and take frustration as a sign of determination.</p>
+]]></content>
+  </entry>
+  
+</feed>

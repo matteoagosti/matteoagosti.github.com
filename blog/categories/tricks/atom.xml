@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Tricks | Matteo Agosti]]></title>
+  <link href="http://www.matteoagosti.com/blog/categories/tricks/atom.xml" rel="self"/>
+  <link href="http://www.matteoagosti.com/"/>
+  <updated>2013-01-22T00:26:17+01:00</updated>
+  <id>http://www.matteoagosti.com/</id>
+  <author>
+    <name><![CDATA[Matteo Agosti]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Automatic screen shot sharing with Dropbox and Automator]]></title>
+    <link href="http://www.matteoagosti.com/blog/2012/10/28/automatic-screen-shot-sharing-with-dropbox-and-automator/"/>
+    <updated>2012-10-28T22:31:00+01:00</updated>
+    <id>http://www.matteoagosti.com/blog/2012/10/28/automatic-screen-shot-sharing-with-dropbox-and-automator</id>
+    <content type="html"><![CDATA[<p>After long time using various utilities to automatically share my screen shots when I updated to Montain Lion I had to find another solution as many of them stopped working. It came to my mind that OS X is bundled with Automator, an extremely powerful utility that I always relegated to thumbnails generation. So I decided to give it a try and I eventually made it. That's how I did.</p>
+
+<!-- more-->
+
+
+<p>First, fire up Automator, create a new <code>folder action</code> and associate it to the Desktop, as that is the place where screen shots captured with the 3 fingers key combo are stored.</p>
+
+<p><img src="http://www.matteoagosti.com/images/posts/Screen%20Shot%202012-10-28%20at%2010.42.55%20PM.png" alt="Screenshot of a folder action for desktop" /></p>
+
+<p>Add the <code>Filter Finder Items</code> action to select only images whose file name starts with <code>Screen Shot</code> (if your installation is not in English you may have to replace <code>Screen Shot</code> with the translated version)</p>
+
+<p><img src="http://www.matteoagosti.com/images/posts/Screen%20Shot%202012-10-28%20at%2010.47.00%20PM.png" alt="Screenshot of a folder action for desktop" /></p>
+
+<p>Add the <code>Move Finder Items</code> action to move previously selected files to your Dropbox public folder</p>
+
+<p><img src="http://www.matteoagosti.com/images/posts/Screen%20Shot%202012-10-28%20at%2010.49.01%20PM.png" alt="Screenshot of a folder action for desktop" /></p>
+
+<p>Now the tricky part, add a <code>Run Shell Script</code> action, selecting <code>as argument</code> in the <code>Pass input</code> option and adding the following code:</p>
+
+<p><code>
+dropbox="http://dl.dropbox.com/u/XXXXXX/"
+url=${dropbox}$(basename $1)
+encodedUrl=`echo $url | sed 's/ /%20/g'`
+echo -ne ${encodedUrl} | pbcopy
+afplay /System/Library/Sounds/Glass.aiff
+</code></p>
+
+<p>Replace <code>XXXXXX</code> with your Dropbox user id. To find it, just copy the URL of one of your public files (right-click/control-click a file in your Dropbox public folder, then choose from the menu <code>Dropbox</code> > <code>Copy Public Link</code> and paste it somewhere)</p>
+
+<p><img src="http://www.matteoagosti.com/images/posts/Screen%20Shot%202012-10-28%20at%2011.04.54%20PM.png" alt="Screenshot of a folder action for desktop" /></p>
+
+<p>Now save the folder action, close automator and have fun!</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Add spaces to Mac OS X dock]]></title>
+    <link href="http://www.matteoagosti.com/blog/2012/05/14/add-spaces-to-mac-os-x-dock/"/>
+    <updated>2012-05-14T18:30:00+02:00</updated>
+    <id>http://www.matteoagosti.com/blog/2012/05/14/add-spaces-to-mac-os-x-dock</id>
+    <content type="html"><![CDATA[<p>I recently discovered that you can easily add spaces between Mac OS X Dock icons. Here's how.</p>
+
+<!--more-->
+
+
+<p>Simply open the Terminal and run the following command:</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>defaults write com.apple.dock persistent-apps -array-add <span class="s1">&#39;{tile-data={}; tile-type=&quot;spacer-tile&quot;;}&#39;</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>To see changes you need to restart the Dock process:</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>killall Dock
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>You can drag and move the spacer between icons as you would do with app icons. If you want to add another spacer simple re-run the first command. An example of what you could obtain</p>
+
+<p><img src="http://www.matteoagosti.com/images/posts/dock-with-spaces.png" alt="Screenshot of a Mac OS X Dock with spaces" /></p>
+
+<p>For geeks: if you want to add the spacer to the right side of the Dock (documents section), run the following command:</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>defaults write com.apple.dock persistent-others -array-add <span class="s1">&#39;{tile-data={}; tile-type=&quot;spacer-tile&quot;;}&#39;</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+]]></content>
+  </entry>
+  
+</feed>

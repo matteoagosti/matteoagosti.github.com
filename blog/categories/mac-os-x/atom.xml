@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Mac OS X | Matteo Agosti]]></title>
+  <link href="http://www.matteoagosti.com/blog/categories/mac-os-x/atom.xml" rel="self"/>
+  <link href="http://www.matteoagosti.com/"/>
+  <updated>2013-01-22T00:26:17+01:00</updated>
+  <id>http://www.matteoagosti.com/</id>
+  <author>
+    <name><![CDATA[Matteo Agosti]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Automatic screen shot sharing with Dropbox and Automator]]></title>
+    <link href="http://www.matteoagosti.com/blog/2012/10/28/automatic-screen-shot-sharing-with-dropbox-and-automator/"/>
+    <updated>2012-10-28T22:31:00+01:00</updated>
+    <id>http://www.matteoagosti.com/blog/2012/10/28/automatic-screen-shot-sharing-with-dropbox-and-automator</id>
+    <content type="html"><![CDATA[<p>After long time using various utilities to automatically share my screen shots when I updated to Montain Lion I had to find another solution as many of them stopped working. It came to my mind that OS X is bundled with Automator, an extremely powerful utility that I always relegated to thumbnails generation. So I decided to give it a try and I eventually made it. That's how I did.</p>
+
+<!-- more-->
+
+
+<p>First, fire up Automator, create a new <code>folder action</code> and associate it to the Desktop, as that is the place where screen shots captured with the 3 fingers key combo are stored.</p>
+
+<p><img src="http://www.matteoagosti.com/images/posts/Screen%20Shot%202012-10-28%20at%2010.42.55%20PM.png" alt="Screenshot of a folder action for desktop" /></p>
+
+<p>Add the <code>Filter Finder Items</code> action to select only images whose file name starts with <code>Screen Shot</code> (if your installation is not in English you may have to replace <code>Screen Shot</code> with the translated version)</p>
+
+<p><img src="http://www.matteoagosti.com/images/posts/Screen%20Shot%202012-10-28%20at%2010.47.00%20PM.png" alt="Screenshot of a folder action for desktop" /></p>
+
+<p>Add the <code>Move Finder Items</code> action to move previously selected files to your Dropbox public folder</p>
+
+<p><img src="http://www.matteoagosti.com/images/posts/Screen%20Shot%202012-10-28%20at%2010.49.01%20PM.png" alt="Screenshot of a folder action for desktop" /></p>
+
+<p>Now the tricky part, add a <code>Run Shell Script</code> action, selecting <code>as argument</code> in the <code>Pass input</code> option and adding the following code:</p>
+
+<p><code>
+dropbox="http://dl.dropbox.com/u/XXXXXX/"
+url=${dropbox}$(basename $1)
+encodedUrl=`echo $url | sed 's/ /%20/g'`
+echo -ne ${encodedUrl} | pbcopy
+afplay /System/Library/Sounds/Glass.aiff
+</code></p>
+
+<p>Replace <code>XXXXXX</code> with your Dropbox user id. To find it, just copy the URL of one of your public files (right-click/control-click a file in your Dropbox public folder, then choose from the menu <code>Dropbox</code> > <code>Copy Public Link</code> and paste it somewhere)</p>
+
+<p><img src="http://www.matteoagosti.com/images/posts/Screen%20Shot%202012-10-28%20at%2011.04.54%20PM.png" alt="Screenshot of a folder action for desktop" /></p>
+
+<p>Now save the folder action, close automator and have fun!</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[MySQL 5.5 on Mac OS X issues fixed]]></title>
+    <link href="http://www.matteoagosti.com/blog/2012/05/14/mysql-5-dot-5-on-mac-os-x-issues-fixed/"/>
+    <updated>2012-05-14T21:46:00+02:00</updated>
+    <id>http://www.matteoagosti.com/blog/2012/05/14/mysql-5-dot-5-on-mac-os-x-issues-fixed</id>
+    <content type="html"><![CDATA[<p>If you have recently installed MySQL 5.5 on Mac OS X you have probably faced some issues with anything that relies on libmysqlclient as, for example, the handy <code>node.js db-mysql</code> or <code>gem mysql2</code> modules.</p>
+
+<!--more-->
+
+
+<p>The problem lies into the fact that the system doesn't know the full path to the library. To solve the issue, you simply have to setup the full path in your enviroment variables. Assuming you have a UNIX system with a Bash shell you could simply run the following command:</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nb">echo</span> <span class="s1">&#39;export DYLD_LIBRARY_PATH=/usr/local/mysql/lib:$DYLD_LIBRARY_PATH&#39;</span> &gt;&gt; ~/.bash_profile
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Compiling Ruby extensions with Xcode 4.3]]></title>
+    <link href="http://www.matteoagosti.com/blog/2012/05/14/compiling-ruby-extensions-with-xcode-4-dot-3/"/>
+    <updated>2012-05-14T21:12:00+02:00</updated>
+    <id>http://www.matteoagosti.com/blog/2012/05/14/compiling-ruby-extensions-with-xcode-4-dot-3</id>
+    <content type="html"><![CDATA[<p>Today I decided to try out <a href="http://octopress.org/" title="Visit Octopress website if you are looking for a blogging framework for hackers">Octopress</a> for handling my personal website. As always, things never go as smooth as it should be, otherwise where is the fun?</p>
+
+<!--more-->
+
+
+<p>The major flaw I had to face was the failure in compiling some Ruby extensions, apparently due to missing header files and binaries.</p>
+
+<p>My system currently runs OS X 10.7.4 with Xcode 4.3 and the <a href="http://adcdownload.apple.com/Developer_Tools/command_line_tools_for_xcode__february_2012/command_line_tools_for_xcode_.dmg" title="Download the standard command line tools for Xcode. Warning, requires an Apple Developer account">standalone command line tools</a> installed (the latter is not any longer packaged into Xcode and has to be installed manually).</p>
+
+<p>After having checked that all required libs and tools were installed on my system I started to think on a path-related issue. Before Xcode 4.3, in fact, all dev related stuff was stored in <code>/Developer</code>, whereas since Xcode 4.3 everything is packed inside the application folder itself.</p>
+
+<p>I found out the handy command line tool <code>xcode-select</code> whose responsability is to manage the path for Xcode and UNIX tools and decided to force the new path:</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>sudo xcode-select -switch /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>That did the trick and the fact that you are reading this on Octopress proves its success :P</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Add spaces to Mac OS X dock]]></title>
+    <link href="http://www.matteoagosti.com/blog/2012/05/14/add-spaces-to-mac-os-x-dock/"/>
+    <updated>2012-05-14T18:30:00+02:00</updated>
+    <id>http://www.matteoagosti.com/blog/2012/05/14/add-spaces-to-mac-os-x-dock</id>
+    <content type="html"><![CDATA[<p>I recently discovered that you can easily add spaces between Mac OS X Dock icons. Here's how.</p>
+
+<!--more-->
+
+
+<p>Simply open the Terminal and run the following command:</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>defaults write com.apple.dock persistent-apps -array-add <span class="s1">&#39;{tile-data={}; tile-type=&quot;spacer-tile&quot;;}&#39;</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>To see changes you need to restart the Dock process:</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>killall Dock
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>You can drag and move the spacer between icons as you would do with app icons. If you want to add another spacer simple re-run the first command. An example of what you could obtain</p>
+
+<p><img src="http://www.matteoagosti.com/images/posts/dock-with-spaces.png" alt="Screenshot of a Mac OS X Dock with spaces" /></p>
+
+<p>For geeks: if you want to add the spacer to the right side of the Dock (documents section), run the following command:</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>defaults write com.apple.dock persistent-others -array-add <span class="s1">&#39;{tile-data={}; tile-type=&quot;spacer-tile&quot;;}&#39;</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+]]></content>
+  </entry>
+  
+</feed>

@@ -1,0 +1,442 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Rate limiting function calls in JavaScript - Matteo Agosti</title>
+  <meta name="author" content="Matteo Agosti">
+
+  
+  <meta name="description" content="Rate Limiting Function Calls in JavaScript Jan 22nd, 2013 I have recently struggled against the annoying problem of rate limitations. I was trying &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://www.matteoagosti.com/blog/2013/01/22/rate-limiting-function-calls-in-javascript/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="Matteo Agosti" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-2101303-2']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Matteo Agosti</a></h1>
+  
+    <h2>Software engineer</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:www.matteoagosti.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Rate Limiting Function Calls in JavaScript</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-01-22T00:23:00+01:00" pubdate data-updated="true">Jan 22<span>nd</span>, 2013</time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>I have recently struggled against the annoying problem of rate limitations. I was trying to connect to a service that prevents you to do more than 5 calls every 5 seconds. I didn&#8217;t want to limit calls at the origin, but instead have some sort of mechanism that could handle limitations automatically by queuing calls and allowing bursts. With this article I&#8217;d like to share the code that helped me achieve this result.</p>
+
+<!-- more-->
+
+
+<p>The solution to the problem is a <a href="http://en.wikipedia.org/wiki/FIFO" title="FIFO">FIFO</a> queue that gets drained according to the current execution rate. Any operation that needs to be executed is added to the queue once the rate is exhausted and as soon as a slot is available it will get shifted out with the queue entrance priority (first in, first out). In addition to that, I also wanted to introduce a mechanism for handling bursts: there are services that limit your rate using the simple formula <code>maxOperations / interval</code>, but others simply check that you don&#8217;t overpass the maximum number of operations within the allowed interval so that bursts are possible.</p>
+
+<p>I came up with a simple class that you can reuse in your projects whenever you need a mechanism for controlling the rate of function calls. First let&#8217;s look at the full code and then stop on relevant parts:</p>
+
+<figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="kd">var</span> <span class="nx">RateLimit</span> <span class="o">=</span> <span class="p">(</span><span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">RateLimit</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">maxOps</span><span class="p">,</span> <span class="nx">interval</span><span class="p">,</span> <span class="nx">allowBursts</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">this</span><span class="p">.</span><span class="nx">_maxRate</span> <span class="o">=</span> <span class="nx">allowBursts</span> <span class="o">?</span> <span class="nx">maxOps</span> <span class="o">:</span> <span class="nx">maxOps</span> <span class="o">/</span> <span class="nx">interval</span><span class="p">;</span>
+</span><span class='line'>    <span class="k">this</span><span class="p">.</span><span class="nx">_interval</span> <span class="o">=</span> <span class="nx">interval</span><span class="p">;</span>
+</span><span class='line'>    <span class="k">this</span><span class="p">.</span><span class="nx">_allowBursts</span> <span class="o">=</span> <span class="nx">allowBursts</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">this</span><span class="p">.</span><span class="nx">_numOps</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>    <span class="k">this</span><span class="p">.</span><span class="nx">_start</span> <span class="o">=</span> <span class="k">new</span> <span class="nb">Date</span><span class="p">().</span><span class="nx">getTime</span><span class="p">();</span>
+</span><span class='line'>    <span class="k">this</span><span class="p">.</span><span class="nx">_queue</span> <span class="o">=</span> <span class="p">[];</span>
+</span><span class='line'>  <span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="nx">RateLimit</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">schedule</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">fn</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="kd">var</span> <span class="nx">that</span> <span class="o">=</span> <span class="k">this</span><span class="p">,</span>
+</span><span class='line'>        <span class="nx">rate</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+</span><span class='line'>        <span class="nx">now</span> <span class="o">=</span> <span class="k">new</span> <span class="nb">Date</span><span class="p">().</span><span class="nx">getTime</span><span class="p">(),</span>
+</span><span class='line'>        <span class="nx">elapsed</span> <span class="o">=</span> <span class="nx">now</span> <span class="o">-</span> <span class="k">this</span><span class="p">.</span><span class="nx">_start</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="nx">elapsed</span> <span class="o">&gt;</span> <span class="k">this</span><span class="p">.</span><span class="nx">_interval</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">this</span><span class="p">.</span><span class="nx">_numOps</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>      <span class="k">this</span><span class="p">.</span><span class="nx">_start</span> <span class="o">=</span> <span class="nx">now</span><span class="p">;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="nx">rate</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">_numOps</span> <span class="o">/</span> <span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">_allowBursts</span> <span class="o">?</span> <span class="mi">1</span> <span class="o">:</span> <span class="nx">elapsed</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="nx">rate</span> <span class="o">&lt;</span> <span class="k">this</span><span class="p">.</span><span class="nx">_maxRate</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">_queue</span><span class="p">.</span><span class="nx">length</span> <span class="o">===</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">this</span><span class="p">.</span><span class="nx">_numOps</span><span class="o">++</span><span class="p">;</span>
+</span><span class='line'>        <span class="nx">fn</span><span class="p">();</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>      <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">if</span> <span class="p">(</span><span class="nx">fn</span><span class="p">)</span> <span class="k">this</span><span class="p">.</span><span class="nx">_queue</span><span class="p">.</span><span class="nx">push</span><span class="p">(</span><span class="nx">fn</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="k">this</span><span class="p">.</span><span class="nx">_numOps</span><span class="o">++</span><span class="p">;</span>
+</span><span class='line'>        <span class="k">this</span><span class="p">.</span><span class="nx">_queue</span><span class="p">.</span><span class="nx">shift</span><span class="p">()();</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="nx">fn</span><span class="p">)</span> <span class="k">this</span><span class="p">.</span><span class="nx">_queue</span><span class="p">.</span><span class="nx">push</span><span class="p">(</span><span class="nx">fn</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="nx">setTimeout</span><span class="p">(</span><span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="nx">that</span><span class="p">.</span><span class="nx">schedule</span><span class="p">();</span>
+</span><span class='line'>      <span class="p">},</span> <span class="mi">1</span> <span class="o">/</span> <span class="k">this</span><span class="p">.</span><span class="nx">_maxRate</span><span class="p">);</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>  <span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">return</span> <span class="nx">RateLimit</span><span class="p">;</span>
+</span><span class='line'><span class="p">})();</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>You may notice from the class constructor that we have three parameters (I implicitly assume their type and haven&#8217;t added any type check):</p>
+
+<ul>
+<li><code>maxOps (int)</code>, maximum number of operations allowed</li>
+<li><code>interval (int)</code>, timespan (in milliseconds) where <code>maxOps</code> should be calculated</li>
+<li><code>allowBursts (boolean)</code>, whether or not bursts are allowed</li>
+</ul>
+
+
+<p>The prototype method <code>schedule</code> is the core function of the class and it accepts a function <code>fn</code> that will be executed according to rate limits. Further improvements can be done on this as, for example, setting out the context where the function is being called. However, for this small article I tried to keep it as simple as possible.</p>
+
+<p>The actual flow of the schedule algorithm can be described as follows (line numbers from the previous code block):</p>
+
+<ul>
+<li><code>18-20</code>: first it checks if we are still in the timespan, resetting rate counters otherwise</li>
+<li><code>23</code>: then it calculates the current rate based on bursts allowance, equal to the number of operations executed until now when true, or to the frequency of operations executed until now otherwise</li>
+<li><code>25-36</code>: if the rate is not exhausted it will execute the current operation immediately when the queue is empty, otherwise it will add the current operation to the queue and execute the first operation that was inserted in the queue (here is the FIFO strategy)</li>
+<li><code>37-34</code>: if the rate is exhausted it will add the operation to the queue and postpone the execution of the scheduler on the next available timespan.</li>
+</ul>
+
+
+<p>You&#8217;ll notice that on lines <code>31</code> and <code>38</code> a check on <code>fn</code> is being done. This is due to what happens on line <code>41</code>: when I postpone the execution of the <code>schedule</code> method I do not pass any operation to execute as I want it to process the queue.</p>
+
+<p>Now a working example you can play with to test out the <code>RateLimit</code> class:</p>
+
+<figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="kd">var</span> <span class="nx">rateLimit</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">RateLimit</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">2000</span><span class="p">,</span> <span class="kc">false</span><span class="p">),</span>
+</span><span class='line'>    <span class="nx">delay</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+</span><span class='line'>    <span class="nx">i</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="o">&lt;</span> <span class="mi">20</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="nx">delay</span> <span class="o">+=</span> <span class="nb">Math</span><span class="p">.</span><span class="nx">floor</span><span class="p">(</span><span class="nb">Math</span><span class="p">.</span><span class="nx">random</span><span class="p">()</span> <span class="o">*</span> <span class="mi">10</span><span class="p">);</span>
+</span><span class='line'>  <span class="p">(</span><span class="kd">function</span><span class="p">(</span><span class="nx">numOperation</span><span class="p">,</span> <span class="nx">delay</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="nx">setTimeout</span><span class="p">(</span><span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>      <span class="nx">rateLimit</span><span class="p">.</span><span class="nx">schedule</span><span class="p">(</span><span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;Operation %d with delay %d&#39;</span><span class="p">,</span> <span class="nx">numOperation</span><span class="p">,</span> <span class="nx">delay</span><span class="p">);</span>
+</span><span class='line'>      <span class="p">});</span>
+</span><span class='line'>    <span class="p">},</span> <span class="nx">delay</span><span class="p">);</span>
+</span><span class='line'>  <span class="p">})(</span><span class="nx">i</span><span class="p">,</span> <span class="nx">delay</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The example creates 20 operations and simulates their arrival in a sequence where items are delayed randomly between 0 and 10 milliseconds (if you wonder why I used a closure for the <code>setInterval</code> you should check my article on <a href="http://www.matteoagosti.com/blog/2012/09/03/how-to-properly-deal-with-javascript-asynchronous-code/" title="How to Properly Deal With Javascript Asynchronous Code">How to Properly Deal With Javascript Asynchronous Code</a>). Every operation, a simple console log of operation number and the delay of arrival), is passed to an instance of <code>RateLimit</code> configured to allow a maximum number of 5 operations every 2 seconds and without bursts, this means an operation every 400 milliseconds. You can modify the example and see what happens when allowing bursts.</p>
+
+<p>Hopefully this could be any help for you. The code is far from being complete, but it can be considered as a good starting point to develop your own rate limiting strategy. Happy coding!</p>
+</div>
+
+
+
+  <p>If you want to discuss about this article, I'm <a href="https://twitter.com/matteoagosti" title="Contact me on Twitter" rel="nofollow">@matteoagosti on Twitter</a>.
+    
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Matteo Agosti</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-01-22T00:23:00+01:00" pubdate data-updated="true">Jan 22<span>nd</span>, 2013</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/development/'>Development</a>, <a class='category' href='/blog/categories/javascript/'>JavaScript</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://www.matteoagosti.com/blog/2013/01/22/rate-limiting-function-calls-in-javascript/" data-via="matteoagosti" data-counturl="http://www.matteoagosti.com/blog/2013/01/22/rate-limiting-function-calls-in-javascript/" >Tweet</a>
+  
+  
+  <div class="g-plusone" data-size="medium"></div>
+  
+  
+    <div class="fb-like" data-send="true" data-width="450" data-show-faces="false"></div>
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2013/01/17/drupal-website-development-using-a-git-workflow/" title="Previous Post: Drupal website development using a GIT workflow">&laquo; Drupal website development using a GIT workflow</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2013/01/22/rate-limiting-function-calls-in-javascript/">Rate limiting function calls in JavaScript</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2013/01/17/drupal-website-development-using-a-git-workflow/">Drupal website development using a GIT workflow</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/11/16/the-rationale-behind-andthewinner-is-a-platform-for-viral-contests-on-twitter/">The rationale behind andthewinner.is, a platform for viral contests on Twitter</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/28/automatic-screen-shot-sharing-with-dropbox-and-automator/">Automatic screen shot sharing with Dropbox and Automator</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/03/how-to-properly-deal-with-javascript-asynchronous-code/">How to properly deal with Javascript asynchronous code</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+<section>
+  <h1>Latest Tweets</h1>
+  <ul id="tweets">
+    <li class="loading">Status updating...</li>
+  </ul>
+  <script type="text/javascript">
+    $.domReady(function(){
+      getTwitterFeed("matteoagosti", 4, false);
+    });
+  </script>
+  <script src="/javascripts/twitter.js" type="text/javascript"> </script>
+  
+    <a href="http://twitter.com/matteoagosti" class="twitter-follow-button" data-show-count="false">Follow @matteoagosti</a>
+  
+</section>
+
+
+
+<section class="googleplus googleplus-hidden">
+  <h1>
+    <a href="https://plus.google.com/100338091555197609658?rel=author">
+      <img src="http://www.google.com/images/icons/ui/gprofile_button-32.png" width="32" height="32">
+      Google+
+    </a>
+  </h1>
+</section>
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2013 - Matteo Agosti -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+
+
+<div id="fb-root"></div>
+<script>(function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) {return;}
+  js = d.createElement(s); js.id = id;
+  js.src = "//connect.facebook.net/en_US/all.js#appId=212934732101925&xfbml=1";
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));</script>
+
+
+
+  <script type="text/javascript">
+    (function() {
+      var script = document.createElement('script'); script.type = 'text/javascript'; script.async = true;
+      script.src = 'https://apis.google.com/js/plusone.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(script, s);
+    })();
+  </script>
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

@@ -1,0 +1,384 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: JavaScript | Matteo Agosti]]></title>
+  <link href="http://www.matteoagosti.com/blog/categories/javascript/atom.xml" rel="self"/>
+  <link href="http://www.matteoagosti.com/"/>
+  <updated>2013-01-22T00:26:17+01:00</updated>
+  <id>http://www.matteoagosti.com/</id>
+  <author>
+    <name><![CDATA[Matteo Agosti]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Rate limiting function calls in JavaScript]]></title>
+    <link href="http://www.matteoagosti.com/blog/2013/01/22/rate-limiting-function-calls-in-javascript/"/>
+    <updated>2013-01-22T00:23:00+01:00</updated>
+    <id>http://www.matteoagosti.com/blog/2013/01/22/rate-limiting-function-calls-in-javascript</id>
+    <content type="html"><![CDATA[<p>I have recently struggled against the annoying problem of rate limitations. I was trying to connect to a service that prevents you to do more than 5 calls every 5 seconds. I didn't want to limit calls at the origin, but instead have some sort of mechanism that could handle limitations automatically by queuing calls and allowing bursts. With this article I'd like to share the code that helped me achieve this result.</p>
+
+<!-- more-->
+
+
+<p>The solution to the problem is a <a href="http://en.wikipedia.org/wiki/FIFO" title="FIFO">FIFO</a> queue that gets drained according to the current execution rate. Any operation that needs to be executed is added to the queue once the rate is exhausted and as soon as a slot is available it will get shifted out with the queue entrance priority (first in, first out). In addition to that, I also wanted to introduce a mechanism for handling bursts: there are services that limit your rate using the simple formula <code>maxOperations / interval</code>, but others simply check that you don't overpass the maximum number of operations within the allowed interval so that bursts are possible.</p>
+
+<p>I came up with a simple class that you can reuse in your projects whenever you need a mechanism for controlling the rate of function calls. First let's look at the full code and then stop on relevant parts:</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="kd">var</span> <span class="nx">RateLimit</span> <span class="o">=</span> <span class="p">(</span><span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">RateLimit</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">maxOps</span><span class="p">,</span> <span class="nx">interval</span><span class="p">,</span> <span class="nx">allowBursts</span><span class="p">)</span> <span class="p">{</span><span class="o">&lt;</span><span class="err">/p&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="nx">pre</span><span class="o">&gt;&lt;</span><span class="nx">code</span><span class="o">&gt;</span><span class="k">this</span><span class="p">.</span><span class="nx">_maxRate</span> <span class="o">=</span> <span class="nx">allowBursts</span> <span class="o">?</span> <span class="nx">maxOps</span> <span class="o">:</span> <span class="nx">maxOps</span> <span class="o">/</span> <span class="nx">interval</span><span class="p">;</span>
+</span><span class='line'><span class="k">this</span><span class="p">.</span><span class="nx">_interval</span> <span class="o">=</span> <span class="nx">interval</span><span class="p">;</span>
+</span><span class='line'><span class="k">this</span><span class="p">.</span><span class="nx">_allowBursts</span> <span class="o">=</span> <span class="nx">allowBursts</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">this</span><span class="p">.</span><span class="nx">_numOps</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'><span class="k">this</span><span class="p">.</span><span class="nx">_start</span> <span class="o">=</span> <span class="k">new</span> <span class="nb">Date</span><span class="p">().</span><span class="nx">getTime</span><span class="p">();</span>
+</span><span class='line'><span class="k">this</span><span class="p">.</span><span class="nx">_queue</span> <span class="o">=</span> <span class="p">[];</span>
+</span><span class='line'><span class="o">&lt;</span><span class="err">/code&gt;&lt;/pre&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="nx">p</span><span class="o">&gt;</span>  <span class="p">};</span><span class="o">&lt;</span><span class="err">/p&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="nx">p</span><span class="o">&gt;</span>  <span class="nx">RateLimit</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">schedule</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">fn</span><span class="p">)</span> <span class="p">{</span><span class="o">&lt;</span><span class="err">/p&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="nx">pre</span><span class="o">&gt;&lt;</span><span class="nx">code</span><span class="o">&gt;</span><span class="kd">var</span> <span class="nx">that</span> <span class="o">=</span> <span class="k">this</span><span class="p">,</span>
+</span><span class='line'>    <span class="nx">rate</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+</span><span class='line'>    <span class="nx">now</span> <span class="o">=</span> <span class="k">new</span> <span class="nb">Date</span><span class="p">().</span><span class="nx">getTime</span><span class="p">(),</span>
+</span><span class='line'>    <span class="nx">elapsed</span> <span class="o">=</span> <span class="nx">now</span> <span class="o">-</span> <span class="k">this</span><span class="p">.</span><span class="nx">_start</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">if</span> <span class="p">(</span><span class="nx">elapsed</span> <span class="o">&amp;</span><span class="nx">gt</span><span class="p">;</span> <span class="k">this</span><span class="p">.</span><span class="nx">_interval</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="k">this</span><span class="p">.</span><span class="nx">_numOps</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>  <span class="k">this</span><span class="p">.</span><span class="nx">_start</span> <span class="o">=</span> <span class="nx">now</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="nx">rate</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">_numOps</span> <span class="o">/</span> <span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">_allowBursts</span> <span class="o">?</span> <span class="mi">1</span> <span class="o">:</span> <span class="nx">elapsed</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">if</span> <span class="p">(</span><span class="nx">rate</span> <span class="o">&amp;</span><span class="nx">lt</span><span class="p">;</span> <span class="k">this</span><span class="p">.</span><span class="nx">_maxRate</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="k">if</span> <span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">_queue</span><span class="p">.</span><span class="nx">length</span> <span class="o">===</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">this</span><span class="p">.</span><span class="nx">_numOps</span><span class="o">++</span><span class="p">;</span>
+</span><span class='line'>    <span class="nx">fn</span><span class="p">();</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="nx">fn</span><span class="p">)</span> <span class="k">this</span><span class="p">.</span><span class="nx">_queue</span><span class="p">.</span><span class="nx">push</span><span class="p">(</span><span class="nx">fn</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">this</span><span class="p">.</span><span class="nx">_numOps</span><span class="o">++</span><span class="p">;</span>
+</span><span class='line'>    <span class="k">this</span><span class="p">.</span><span class="nx">_queue</span><span class="p">.</span><span class="nx">shift</span><span class="p">()();</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'><span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>  <span class="k">if</span> <span class="p">(</span><span class="nx">fn</span><span class="p">)</span> <span class="k">this</span><span class="p">.</span><span class="nx">_queue</span><span class="p">.</span><span class="nx">push</span><span class="p">(</span><span class="nx">fn</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="nx">setTimeout</span><span class="p">(</span><span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="nx">that</span><span class="p">.</span><span class="nx">schedule</span><span class="p">();</span>
+</span><span class='line'>  <span class="p">},</span> <span class="mi">1</span> <span class="o">/</span> <span class="k">this</span><span class="p">.</span><span class="nx">_maxRate</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'><span class="o">&lt;</span><span class="err">/code&gt;&lt;/pre&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="nx">p</span><span class="o">&gt;</span>  <span class="p">};</span><span class="o">&lt;</span><span class="err">/p&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="nx">p</span><span class="o">&gt;</span>  <span class="k">return</span> <span class="nx">RateLimit</span><span class="p">;</span>
+</span><span class='line'><span class="p">})();</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>You may notice from the class constructor that we have three parameters (I implicitly assume their type and haven't added any type check):</p>
+
+<ul>
+<li><code>maxOps (int)</code>, maximum number of operations allowed</li>
+<li><code>interval (int)</code>, timespan (in milliseconds) where <code>maxOps</code> should be calculated</li>
+<li><code>allowBursts (boolean)</code>, whether or not bursts are allowed</li>
+</ul>
+
+
+<p>The prototype method <code>schedule</code> is the core function of the class and it accepts a function <code>fn</code> that will be executed according to rate limits. Further improvements can be done on this as, for example, setting out the context where the function is being called. However, for this small article I tried to keep it as simple as possible.</p>
+
+<p>The actual flow of the schedule algorithm can be described as follows (line numbers from the previous code block):</p>
+
+<ul>
+<li><code>18-20</code>: first it checks if we are still in the timespan, resetting rate counters otherwise</li>
+<li><code>23</code>: then it calculates the current rate based on bursts allowance, equal to the number of operations executed until now when true, or to the frequency of operations executed until now otherwise</li>
+<li><code>25-36</code>: if the rate is not exhausted it will execute the current operation immediately when the queue is empty, otherwise it will add the current operation to the queue and execute the first operation that was inserted in the queue (here is the FIFO strategy)</li>
+<li><code>37-34</code>: if the rate is exhausted it will add the operation to the queue and postpone the execution of the scheduler on the next available timespan.</li>
+</ul>
+
+
+<p>You'll notice that on lines <code>31</code> and <code>38</code> a check on <code>fn</code> is being done. This is due to what happens on line <code>41</code>: when I postpone the execution of the <code>schedule</code> method I do not pass any operation to execute as I want it to process the queue.</p>
+
+<p>Now a working example you can play with to test out the <code>RateLimit</code> class:</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="kd">var</span> <span class="nx">rateLimit</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">RateLimit</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">2000</span><span class="p">,</span> <span class="kc">false</span><span class="p">),</span><span class="o">&lt;</span><span class="err">/p&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="nx">pre</span><span class="o">&gt;&lt;</span><span class="nx">code</span><span class="o">&gt;</span><span class="nx">delay</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+</span><span class='line'><span class="nx">i</span><span class="p">;</span>
+</span><span class='line'><span class="o">&lt;</span><span class="err">/code&gt;&lt;/pre&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="nx">p</span><span class="o">&gt;</span><span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="o">&amp;</span><span class="nx">lt</span><span class="p">;</span> <span class="mi">20</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="nx">delay</span> <span class="o">+=</span> <span class="nb">Math</span><span class="p">.</span><span class="nx">floor</span><span class="p">(</span><span class="nb">Math</span><span class="p">.</span><span class="nx">random</span><span class="p">()</span> <span class="o">*</span> <span class="mi">10</span><span class="p">);</span>
+</span><span class='line'>  <span class="p">(</span><span class="kd">function</span><span class="p">(</span><span class="nx">numOperation</span><span class="p">,</span> <span class="nx">delay</span><span class="p">)</span> <span class="p">{</span><span class="o">&lt;</span><span class="err">/p&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="nx">pre</span><span class="o">&gt;&lt;</span><span class="nx">code</span><span class="o">&gt;</span><span class="nx">setTimeout</span><span class="p">(</span><span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>  <span class="nx">rateLimit</span><span class="p">.</span><span class="nx">schedule</span><span class="p">(</span><span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;Operation %d with delay %d&#39;</span><span class="p">,</span> <span class="nx">numOperation</span><span class="p">,</span> <span class="nx">delay</span><span class="p">);</span>
+</span><span class='line'>  <span class="p">});</span>
+</span><span class='line'><span class="p">},</span> <span class="nx">delay</span><span class="p">);</span>
+</span><span class='line'><span class="o">&lt;</span><span class="err">/code&gt;&lt;/pre&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="nx">p</span><span class="o">&gt;</span>  <span class="p">})(</span><span class="nx">i</span><span class="p">,</span> <span class="nx">delay</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>The example creates 20 operations and simulates their arrival in a sequence where items are delayed randomly between 0 and 10 milliseconds (if you wonder why I used a closure for the <code>setInterval</code> you should check my article on <a href="http://www.matteoagosti.com/blog/2012/09/03/how-to-properly-deal-with-javascript-asynchronous-code/" title="How to Properly Deal With Javascript Asynchronous Code">How to Properly Deal With Javascript Asynchronous Code</a>). Every operation, a simple console log of operation number and the delay of arrival), is passed to an instance of <code>RateLimit</code> configured to allow a maximum number of 5 operations every 2 seconds and without bursts, this means an operation every 400 milliseconds. You can modify the example and see what happens when allowing bursts.</p>
+
+<p>Hopefully this could be any help for you. The code is far from being complete, but it can be considered as a good starting point to develop your own rate limiting strategy. Happy coding!</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[The rationale behind andthewinner.is, a platform for viral contests on Twitter]]></title>
+    <link href="http://www.matteoagosti.com/blog/2012/11/16/the-rationale-behind-andthewinner-is-a-platform-for-viral-contests-on-twitter/"/>
+    <updated>2012-11-16T06:22:00+01:00</updated>
+    <id>http://www.matteoagosti.com/blog/2012/11/16/the-rationale-behind-andthewinner-is-a-platform-for-viral-contests-on-twitter</id>
+    <content type="html"><![CDATA[<p>On November 10-11th 2012 I attended the <a href="http://nodejsconf.it/" title="Node.js conference Italy homepage">Node.js conference</a> in Brescia (Italy) and participated in the hackathon to experiment and have fun with JavaScript on the server side. Together with <a href="https://twitter.com/nickbalestra" title="Nick Balestra's Twitter profile">@nickbalestra</a> we decided to experiment the realtime aspect of Node.js and as we already had background on dealing with social media we decided to build a platform for viral contests on Twitter. We came up with <a href="http://www.andthewinner.is" title="andthewinner.is homepage">andthewinner.is</a> and with this post I'd like to share the details on how we built it.</p>
+
+<!-- more-->
+
+
+<p><img src="http://www.matteoagosti.com/images/posts/andthewinneris-homepage-screenshot.png" alt="Screenshot of a andthewinner.is homepage" /></p>
+
+<h2>Introduction</h2>
+
+<p>Before digging into technical details I'd like to quickly explain the reason why we came up with this project. As <a href="http://feathe.rs/201211111353" title="Nick Balestra's post on the creation of andthewinner.is">Nick mentioned in his post</a> when we attended TechCrunch 2012 event in Rome we were so shocked by the voting done using <a href="http://www.flickr.com/photos/michele_ficara_manganelli/8043905616/in/set-72157631667552679" title="A picture of people voting for startup ideas using pieces of paper at TechCrunch 2012 event in Rome">pieces of paper</a> that we immediately decided to came up with a solution that should be both tech and social.</p>
+
+<p>We started to think about how voting is done in general (written voting, tele voting, etc…) and decided to focus on a public voting system that should be both quick and viral: Twitter! As of late 2011 there are approximately 250 million Tweets and most of them are part of a discussion identified by an hashtag and will likely include a mention to one or more Twitter users. In addition, a Tweet can be also be done via SMS, avoiding 3G/WiFi network issues (many complained about our point for TechCrunch saying that there was no Internet). If this is not an argument strong enough, you just have to look at the recent 2012 US presidential campaign whose result was totally driven by social media. For these reasons we decided to base andthewinner.is on Twitter and leverage on its sharing mechanism to make contests viral.</p>
+
+<p>The general idea is fairly simple: set an #hashtag to identify the contest and use @mention as identifier for contestants. The point of having an hashtag for the contest was introduced to restrict the scope of voting: counting only mentions would simply lead to the top mentioned person overall on Twitter, whereas having an hashtag could actually set up a context. One nice aspect of this approach is that every time a vote is tweeted, anybody tuned on the hashtag will see the vote and could potentially retweet it, thus leading to another vote! In addition, the  tweet text can be anything, it is enough to include the hashtag and one (or even more than one) mention; this means that I can express my vote not just by picking up an option but also attaching a comment to it. This mechanism wouldn't probably fit strict rules of political elections, but it could definitely foster promotion of public events, TV programs and so on.</p>
+
+<p>We created a couple of contests to try it out, you can check them out here:</p>
+
+<ul>
+<li><a href="http://www.andthewinner.is/nodejsconfit" title="Node.js Conference Speakers contest">Node.js Conference Speakers</a> where conference attendance could vote their favourite speaker.</li>
+<li><a href="http://www.andthewinner.is/xf6italia" title="X Factor 2012 Italia Judges contest">X Factor 2012 Italia Judges</a> where X Factor TV program fans could vote their favourite judge.</li>
+</ul>
+
+
+<p>At the moment andthewinner.is is not yet opened to the public in terms of contest creation, but only for contest participation. This has to deal with limitations in the free Twitter API that I am going to analyse later on. However, we are looking forward to run popular contests and if you feel you could have one please contact us via <a href="https://twitter.com/and_thewinneris" title="andthewinner.is' Twitter profile">Twitter</a>.</p>
+
+<h2>Architecture</h2>
+
+<p>When designing the architecture of andthewinner.is we started to think about splitting it into different components as to keep it maintainable and easily scalable. Dealing with Twitter, a potential source for a huge amount of data, means planning ahead something that is dedicated just to it as when traffic grows this could be spread across different machines. We came up with two macro blocks of components: a <em>crawler</em> for fetching tweets and a <em>server app</em> to provide the website experience. A <em>MySQL</em> database is also used for storing contests and votes. Everything has been developed using node.js and relying on the following modules:</p>
+
+<ul>
+<li><a href="https://github.com/mikeal/request" title="Homepage of request module for node.js">request</a> so far one of the most complete module for handling HTTP/HTTPS requests with support for OAuth and streams; basically with this module we can handle any request to Twitter</li>
+<li><a href="https://github.com/visionmedia/express" title="Homepage of express module for node.js">express</a> the web framework we use for the server app, handling routes, views rendering, etc…</li>
+<li><a href="https://github.com/CarnegieLearning/connect-mysql-session" title="Homepage of connect-mysql-session module for node.js">connect-mysql-session</a> a MySQL session store for express</li>
+<li><a href="https://github.com/emberfeather/less.js-middleware" title="Homepage of less-middleware module for node.js">less-middleware</a> a LESS middleware for express</li>
+<li><a href="https://github.com/donpark/hbs" title="Homepage of hbs module for node.js">hbs</a> a handlebars template engine for express</li>
+<li><a href="https://github.com/felixge/node-mysql" title="Homepage of mysql module for node.js">mysql</a> so far the best module (pure JavaScript) to handle MySQL from node.js; the <a href="http://felixge.de/" title="Felix Geisendörfer personal website">author</a> is mad about performances and his talk at the conference just confirmed that this module is the way to go (an old <a href="http://www.youtube.com/watch?v=Kdwwvps4J9A" title="Video of Felix Geisendörfer talking about benchmarking">talk</a> but on the same topic)</li>
+<li><a href="https://github.com/LearnBoost/socket.io" title="Homepage of socket.io module for node.js">socket.io</a> handling web sockets from the server point of view</li>
+<li><a href="https://github.com/LearnBoost/socket.io-client" title="Homepage of socket.io-client module for node.js">socket.io-client</a> handling web sockets from the client point of view</li>
+</ul>
+
+
+<h3>Crawler</h3>
+
+<p>The crawler is responsible for handling running contests and deal with the setup / processing of Twitter stream.</p>
+
+<p>As the filtering happens on all tweets and is not restricted to an authenticated user's timeline, the <a href="https://dev.twitter.com/docs/api/1.1/post/statuses/filter" title="Twitter public stream API documentation">public stream API</a> has been chosen as the only viable option. However, there are some limitations to bear in mind</p>
+
+<ul>
+<li>The number of messages sent to the client is limited to a very small fraction of the total volume of tweets (firehose). If there are more tweets that would match the criteria, they'll get discarded.</li>
+<li>The stream can be filtered with up to 400 keywords, 5000 mentions, 25 location boxes.</li>
+<li>In theory no more than one connection per IP is allowed, even though we went stable up to 11 connections (but this is likely to get banned!). If you try to open two connections to the stream for the same authenticated user the oldest one will get closed, however multiple streams for different users works well (again, until you get banned!).</li>
+</ul>
+
+
+<p>Obviously for the hackathon we could cope with these limitations, but in a real scenario you are forced to switch to <a href="https://dev.twitter.com/programs/twitter-certified-products/products" title="Twitter certified products page">Twitter certified data resellers</a>. That is the main reason why we are not yet opening andthewinner.is to the public.</p>
+
+<p>The logic behind the crawler is fairly simple: it opens a single connection to the stream API using an internal authenticated user and wraps all hashtags into a comma separated values query. Resulting tweets are then processed to find out the related contest and matching participants. This would potentially allow for 400 simultaneously running contests, but depending on their "popularity" the stream cap could be reached quite rapidly. So far, we tested it out with popular hashtags and haven't reached the cap yet.</p>
+
+<p>Every time a new vote is matched, the database gets updated by increasing contest counters; we decided not to store the originating tweet, but that could be easily done and used for some sort of restrictions (e.g. max number of tweets from the same user) or for statistics (e.g. geo distribution of voters). In any case, when dealing with Twitter contents, it is important to know that if you store data you can't display them publicly, but only in a private dashboard.</p>
+
+<p>As to prevent polling the database to find out when a new vote is counted, the crawler provides a socket access to the server app and broadcast the contest data whenever a new update occurs.</p>
+
+<h3>Server app</h3>
+
+<p>The server app is responsible for providing the overall website experience. It is built as an express application and relies on handlebars for rendering page layouts. Page styling is done using a LESS file that is compiled every time the app is started and it includes a responsive layout for a better mobile experience. When the server app is started, it immediately connects to the crawler waiting for contest updates. In addition, it creates a server socket for updating connected clients on specific contest updates; for every contest, in fact,  a channel is created and only its related votes are broadcasted.</p>
+
+<p>Whenever a contest page is requested, the database is queried for fetching data, the handlebars template is compiled and the full page is sent to the client browser; until this point it is not necessary to have support for JavaScript on the client and this allows for fast rendering on mobile devices.</p>
+
+<p>Immediately after the page is loaded the client opens a socket connection with the server app by tuning on the contest channel, thus receiving updates only for the requested contest.</p>
+
+<p>So far everything is pretty standard, there is however a technical solution that in my opinion is worth mentioning as it proves how effective it is to work with JavaScript on both server and client side.</p>
+
+<p>The socket communication exchanges JSON data, so every time a contest receives a vote, a JSON representation of contest and participants is sent to the client. This data structure is normalised from the server as to prevent calculations on the client side; what the server does is basically sorting out rankings, find out if there are ties and so on. As we had mobile devices in mind, we wanted to minimise the time needed for calculus and if you think about contests with a rate of 10 votes per second, unless you rate limit the updates on socket, this would lead to an unusable page. So, the first point of contest normalisation is solved on the server, but what about page rendering on the client? The trick here was to rely on handlebars on the client side too: we precompiled the template we use on the server side (yes, exactly the same template!) as to speed up any operation on the client, and whenever a new update is sent over socket the template is applied to the data structure and the contest HTML replaced with the new one. This gave us an amazing result as we could easily handle 10 votes per second on a mobile device, whereas with the standard solution of processing JSON and rendering the page we could reach a max of 2.7 votes per second.</p>
+
+<p>To sum up, the server app provides a mechanism for normalising contests and the resulting JSON structure is used for compiling the same handlebars file on both server and client. Access to the database is done only on page reload whereas in page updates are done using per-contest channeled socket communication. Did I say already that everything is done in JavaScript? Isn't that awesome? :-)</p>
+
+<h2>Conclusions</h2>
+
+<p>With this post I tried to explain the overall architecture of andthewinner.is, a platform for creating viral contests on Twitter. It is an hackathon project whose goal was to play with node.js and realtime communication; despite being a 24 hours coding / designing result, a lot of efforts went in the overall concept and we strongly believe it has a remarkable growing potential. Our goal was also to show the unexplored capabilities of social media platforms and, in some way, to tease traditional voting systems that in our opinion are not effective and viral.</p>
+
+<p>Due to limitations of free APIs the platform is opened only for the voting part, this means that if you want to try out a contest you'll have to <a href="mailto:andthewinner.is@beyounic.com" title="Email address of andthewinner.is team">contact us</a>; however, by subscribing commercial data plans any limitation could be bypassed.</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[How to properly deal with Javascript asynchronous code]]></title>
+    <link href="http://www.matteoagosti.com/blog/2012/09/03/how-to-properly-deal-with-javascript-asynchronous-code/"/>
+    <updated>2012-09-03T12:15:00+02:00</updated>
+    <id>http://www.matteoagosti.com/blog/2012/09/03/how-to-properly-deal-with-javascript-asynchronous-code</id>
+    <content type="html"><![CDATA[<p>If you are a Javascript developer, you have to deal with asynchronous code. If you are a Javascript developer working with Node.js, asynchronous code is your all in a day's work. Let's see how to properly deal with asynchronous code, avoiding one of the most common mistake.</p>
+
+<!-- more-->
+
+
+<p>The instrinsic nature of asynchronous code is that its execution block can occur indipendently of the main program flow, thus providing a non blocking mechanism of executing actions. This means that, potentially, when the asynchronous code runs the status of any shared variables could be different than the one where the code was defined.</p>
+
+<p>Consider the following example:</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="kd">var</span> <span class="nx">rankings</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;alice&#39;</span><span class="p">,</span> <span class="s1">&#39;bob&#39;</span><span class="p">,</span> <span class="s1">&#39;eve&#39;</span><span class="p">];</span>
+</span><span class='line'><span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="nx">len</span> <span class="o">=</span> <span class="nx">rankings</span><span class="p">.</span><span class="nx">length</span><span class="p">;</span> <span class="nx">i</span> <span class="o">&amp;</span><span class="nx">lt</span><span class="p">;</span> <span class="nx">len</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="nx">setTimeout</span><span class="p">(</span><span class="kd">function</span><span class="p">()</span> <span class="p">{</span><span class="o">&lt;</span><span class="err">/p&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="nx">pre</span><span class="o">&gt;&lt;</span><span class="nx">code</span><span class="o">&gt;</span><span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">i</span><span class="p">,</span> <span class="nx">rankings</span><span class="p">[</span><span class="nx">i</span><span class="p">]);</span>
+</span><span class='line'><span class="o">&lt;</span><span class="err">/code&gt;&lt;/pre&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="nx">p</span><span class="o">&gt;</span>  <span class="p">},</span> <span class="nx">i</span> <span class="o">*</span> <span class="mi">1000</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>The idea is to print every name from the <code>rankings</code> array together with its index. To make the code asynchronous every print is delayed by one second from its predecessor. The output we get is, however, different than what we expected it to be:</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="mi">3</span> <span class="kc">undefined</span>
+</span><span class='line'><span class="mi">3</span> <span class="kc">undefined</span>
+</span><span class='line'><span class="mi">3</span> <span class="kc">undefined</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>As you can see, by the time the asynchronous block is executed, the loop is already ended, so the value of variable <code>i</code> is the one that stops the loop (<code>3</code>). How to prevent this behavior? The answer are <strong>closures</strong>, one of the most powerful features of Javascript; a closure can be seen as a retained scope for Javascript, a function that can have its own variables together with an environment where those variables are binded.</p>
+
+<p>Let's fix the previous example using closures:</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="kd">var</span> <span class="nx">rankings</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;alice&#39;</span><span class="p">,</span> <span class="s1">&#39;bob&#39;</span><span class="p">,</span> <span class="s1">&#39;eve&#39;</span><span class="p">];</span>
+</span><span class='line'><span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="nx">len</span> <span class="o">=</span> <span class="nx">rankings</span><span class="p">.</span><span class="nx">length</span><span class="p">;</span> <span class="nx">i</span> <span class="o">&amp;</span><span class="nx">lt</span><span class="p">;</span> <span class="nx">len</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="p">(</span><span class="kd">function</span><span class="p">(</span><span class="nx">i</span><span class="p">)</span> <span class="p">{</span><span class="o">&lt;</span><span class="err">/p&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="nx">pre</span><span class="o">&gt;&lt;</span><span class="nx">code</span><span class="o">&gt;</span><span class="nx">setTimeout</span><span class="p">(</span><span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>  <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">i</span><span class="p">,</span> <span class="nx">rankings</span><span class="p">[</span><span class="nx">i</span><span class="p">]);</span>
+</span><span class='line'><span class="p">},</span> <span class="nx">i</span> <span class="o">*</span> <span class="mi">1000</span><span class="p">);</span>
+</span><span class='line'><span class="o">&lt;</span><span class="err">/code&gt;&lt;/pre&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="nx">p</span><span class="o">&gt;</span>  <span class="p">})(</span><span class="nx">i</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>As you can see the <code>setTimeout</code> function is wrapped within a closure that has an <code>i</code> argument, whose value is passed at the end of closure definition and corresponds to the loop varialbe <code>i</code>. The output we get is the correct one:</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="mi">0</span> <span class="s1">&#39;alice&#39;</span>
+</span><span class='line'><span class="mi">1</span> <span class="s1">&#39;bob&#39;</span>
+</span><span class='line'><span class="mi">2</span> <span class="s1">&#39;eve&#39;</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>This is a really simple example and in this case detecting the error is fairly easy, however when you have to deal with nested async calls the execution flow gets more complex and it may become extremely painful to detect where the error is. Hopefully this helps, as it helped me in writing better code :)</p>
+]]></content>
+  </entry>
+  
+</feed>

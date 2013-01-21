@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: GIT | Matteo Agosti]]></title>
+  <link href="http://www.matteoagosti.com/blog/categories/git/atom.xml" rel="self"/>
+  <link href="http://www.matteoagosti.com/"/>
+  <updated>2013-01-22T00:26:17+01:00</updated>
+  <id>http://www.matteoagosti.com/</id>
+  <author>
+    <name><![CDATA[Matteo Agosti]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Drupal website development using a GIT workflow]]></title>
+    <link href="http://www.matteoagosti.com/blog/2013/01/17/drupal-website-development-using-a-git-workflow/"/>
+    <updated>2013-01-17T21:10:00+01:00</updated>
+    <id>http://www.matteoagosti.com/blog/2013/01/17/drupal-website-development-using-a-git-workflow</id>
+    <content type="html"><![CDATA[<p>I've been using Drupal for almost 2 years now and I really consider it to be on of the best solutions available when you need a powerful CMS. The source code of Drupal and all its modules are managed using GIT and this dramatically simplifies all code management. The goal of this article is to share a workflow entirely based on GIT that supports the creation, deployment and update of a Drupal website. I won't cover aspects of Drupal setup and management, just the file handling part and I'll assume a bit of familiarity with GIT.</p>
+
+<!-- more-->
+
+
+<h2>Setup</h2>
+
+<p>The approach I'm going to describe here will add Drupal as one of the remote origin of the project and all Drupal's module as GIT submodules. The latter has several hiccups especially when switching among branches of the main project, but being relatively careful  will keep everything safe. In case you want to know more about GIT submodules in general check out their <a href="http://git-scm.com/book/en/Git-Tools-Submodules" title="Git Tools - Submodules">great guide</a>.</p>
+
+<p>The first step is to create a folder called <code>mywebsite</code> and control its source code using GIT:</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>mkdir mywebsite
+</span><span class='line'><span class="nb">cd </span>mywebsite
+</span><span class='line'>git init
+</span><span class='line'>touch README
+</span><span class='line'>git add README
+</span><span class='line'>git commit -am <span class="s2">&quot;Initial commit&quot;</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>If you are familiar with GIT you'll notice that we created a local repository that has no remote origin, thus any committed changes will stay local. For the purpose of this example I won't add a remote repository, but you could easily do it with the following command:</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>git remote add origin git://example.com/git.git/
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>Now let's rename the default branch <code>master</code> into <code>development</code> (where all changes will happen) and create a new one for the <code>production</code> environment:</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>git branch -m master development
+</span><span class='line'>git branch production
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>Notice that I'm creating the <code>production</code> branch without the usual <code>-b</code> flag as I don't want to set my current branch to it and stick with <code>development</code>.</p>
+
+<p>Now it's time to add Drupal core as one of the remote repositories so that we can pull the latest version. At the moment of writing the latest core version is 7.19, but I'm going to pull the 7.18 as I want to cover an example of core update:</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>git remote add drupal git://drupalcode.org/project/drupal.git
+</span><span class='line'>git pull drupal 7.18
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>With the <code>pull</code> not only we are asking GIT to <code>fetch</code> the 7.18 tag, but also to <code>merge</code> it with our current branch (<code>development</code>). As a result, GIT will prompt you to add a comment message to the merge operation; you can leave the default message (assuming it fired up <code>vi</code> just save and quit with <code>:wq</code>).</p>
+
+<p>After the core is installed we can add modules. In this example I'll simply add one, but you can repeat the command for all modules you need. Simply do not forget to add the branch of the module you want to work on and the path where it should be installed:</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>git submodule add --branch 7.x-1.x http://git.drupal.org/project/ctools.git sites/all/modules/ctools
+</span><span class='line'>git commit -am <span class="s2">&quot;Adding module ctools 7.x-1.x&quot;</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<h2>Deployment</h2>
+
+<p>Assuming that <code>production</code> will be our deployment branch we just need to check it out and merge changes done in <code>development</code>. Let's start by moving into <code>production</code>:</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>git checkout production
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>You'll notice that GIT will generate an error as it won't be able to remove the <code>sites/all/modules/ctools</code> folder due to being not empty.  This is what I previously defined as the hiccup of working with GIT submodules. When you switch branch GIT actually keeps all submodules folder because it considers them as untracked changes;  a submodule, in fact, is seen as a simple reference, so when you switch to a branch that does not have this reference the corresponding folder appears with no mapping and thus is considered as untracked change. To prevent this issue, every time you switch branch into a GIT project that has submodules you have to first force cleaning the repository and then update the submodule content. The same applies when you have different versions of the same submodule across your branches. In order to prevent issues, when you switch branch you should run the following commands:</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>git clean -ffd
+</span><span class='line'>git submodule update --init --recursive
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>Just be aware that by doing this you are going to <strong>loose untracked changes</strong> so before switching branch be sure to commit! As the <code>production</code> environment is empty at this stage, the <code>submodule</code> command won't do anything.</p>
+
+<p>Now that we are on the <code>production</code> branch we can merge changes done in the <code>development</code> one:</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>git merge development
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>After the merge we now have to update all submodules, as they do not get automatically updated:</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>git submodule update --init --recursive
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<h2>Handling updates</h2>
+
+<p>Now let's try to update Drupal core. Before doing that we are going to switch to the <code>development</code> branch:</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>git checkout development
+</span><span class='line'>git clean -ffd
+</span><span class='line'>git submodule update --init --recursive
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>Notice that after checking out I always clean for untracked changes and update submodules as to prevent the issue mentioned before. In a real scenario you won't probably need to switch branches continuously as you are going to have the development environment on a machine and the production onto another.</p>
+
+<p>Since we want to pull the last version of Drupal core (7.19 at the moment of writing) we first need to <code>fetch</code> latest code and then <code>merge</code> the latest branch. The <code>fetch</code> operation could be omitted now since Drupal code  probably won't change in the middle of this example, but I included it for reference:</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>git fetch drupal
+</span><span class='line'>git merge 7.19
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>Before checking out the latest branch we had to fetch all updates as to have all changes (obviously this is included as reference, since for this example the code ). Assuming you tested out that everything works fine you can deploy by first checking out the <code>production</code> branch:</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>git checkout production
+</span><span class='line'>git clean -ffd
+</span><span class='line'>git submodule update --init --recursive
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>and then merging changes and updating all submodules:</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>git merge development
+</span><span class='line'>git submodule update --init --recursive
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>What if you need to update a module? Let's switch back to the development branch for an example:</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>git checkout development
+</span><span class='line'>git clean -ffd
+</span><span class='line'>git submodule update --init --recursive
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>Whenever you want to update a GIT submodule you need to go in its directory as it is a standalone GIT repository itself, <code>fetch</code> the latest source code and <code>checkout</code> the branch you need:</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nb">cd </span>sites/all/modules/ctools
+</span><span class='line'>git fetch
+</span><span class='line'>git checkout 7.x-1.2
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>You my ask why <code>checkout</code> and not <code>merge</code> as we did with the core. Well, the <code>checkout</code> operation applied to the core would overwrite all GIT project settings resulting in a start from scratch. For the module we do not need to track change so the <code>checkout</code> is more appropriate. In case you decide to work on the module code, than you need to track changes, work on your branch and then do the <code>merge</code>. However, the latter is a real complex scenario that deserves an article on its own.</p>
+
+<p>Now <strong>go back to the root</strong> of our GIT project, the <code>mywebsite</code> folder, and commit your changes:</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>git commit -am <span class="s2">&quot;Updating module ctools to 7.x-1.2&quot;</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>It is important to execute the above command from the root of the project as we commit on the GIT project not on the GIT submodule.</p>
+
+<p>To deploy changes to the <code>production</code> environment the procedure is the same as mentioned before, first we <code>checkout</code> the <code>production</code> branch:</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>git checkout production
+</span><span class='line'>git clean -ffd
+</span><span class='line'>git submodule update --init --recursive
+</span><span class='line'>git merge development
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>and then we <code>merge</code> changes and update submodules:</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>git merge development
+</span><span class='line'>git submodule update --init --recursive
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<h2>Conclusions</h2>
+
+<p>With this article I wanted to describe a full GIT workflow to support the creation, deployment and update of websites based on Drupal, with modules handling throughout GIT submodules. There are a couple of drawbacks with this approach mainly due to branch switching when using submodules, however many are the benefits when all your code is always synced up and easy to update. If you want to dig more into details I highly recommend reading the <a href="http://drupal.org/node/803746" title="Building a Drupal site with Git">GIT guide</a> on Drupal website.</p>
+]]></content>
+  </entry>
+  
+</feed>
